@@ -46,12 +46,15 @@ var (
 	now      = time.Now
 )
 
+// ArchiveEvent is triggered after a file has been parsed and contains
+// the S3 event along with import statistics.
 type ArchiveEvent struct {
 	events.S3Event
 	RowsProcessed int `json:"rowsProcessed"`
 	RowsFailed    int `json:"rowsFailed"`
 }
 
+// handler archives the source file, updates DynamoDB and emits metrics.
 func handler(ctx context.Context, evt ArchiveEvent) error {
 	rec := evt.Records[0]
 	bucket := rec.S3.Bucket.Name
@@ -134,6 +137,7 @@ func handler(ctx context.Context, evt ArchiveEvent) error {
 	return nil
 }
 
+// main configures AWS clients and starts the Lambda handler.
 func main() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {

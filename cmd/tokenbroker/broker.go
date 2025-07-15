@@ -29,6 +29,7 @@ type metricsClient interface {
 	PutMetricData(ctx context.Context, in *cloudwatch.PutMetricDataInput, optFns ...func(*cloudwatch.Options)) (*cloudwatch.PutMetricDataOutput, error)
 }
 
+// Broker coordinates access token retrieval and caching across Lambda instances.
 type Broker struct {
 	store      tokenStore
 	cw         metricsClient
@@ -46,6 +47,7 @@ const (
 	graceTTL = 15 * time.Minute
 )
 
+// getToken returns a cached token or refreshes it using fetchToken when needed.
 func (b *Broker) getToken(ctx context.Context) (string, error) {
 	b.mu.Lock()
 	if b.token != "" && time.Now().Before(b.expiry) {
@@ -124,6 +126,7 @@ func (b *Broker) getToken(ctx context.Context) (string, error) {
 	return token, nil
 }
 
+// fetchToken calls the Salesforce token endpoint and returns a new token.
 func (b *Broker) fetchToken(ctx context.Context) (string, error) {
 	form := make(urlValues)
 	for k, v := range b.creds {
@@ -162,8 +165,10 @@ func (b *Broker) fetchToken(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("unauthorized")
 }
 
+// urlValues is a light weight replacement for url.Values.
 type urlValues map[string]string
 
+// Encode converts the form values to application/x-www-form-urlencoded.
 func (v urlValues) Encode() string {
 	var buf strings.Builder
 	first := true
@@ -182,6 +187,7 @@ func (v urlValues) Encode() string {
 	return buf.String()
 }
 
+// handler is the Lambda entrypoint used by API Gateway to obtain a token.
 func (b *Broker) handler(ctx context.Context, evt events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
 	start := time.Now()
 	tok, err := b.getToken(ctx)

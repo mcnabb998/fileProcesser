@@ -30,10 +30,12 @@ type ErrorEvent struct {
 	Message       string `json:"message"`
 }
 
+// tokenResp mirrors the JSON structure returned by the broker.
 type tokenResp struct {
 	AccessToken string `json:"access_token"`
 }
 
+// getToken retrieves an auth token from the token broker, retrying on 401.
 func getToken(ctx context.Context) (string, error) {
 	for i := 0; ; i++ {
 		if i >= 2 {
@@ -63,6 +65,7 @@ func getToken(ctx context.Context) (string, error) {
 	}
 }
 
+// sfRequest sends an authenticated request to Salesforce.
 func sfRequest(ctx context.Context, method, path, token string, body any) (*http.Response, error) {
 	var r io.Reader
 	if body != nil {
@@ -80,6 +83,7 @@ func sfRequest(ctx context.Context, method, path, token string, body any) (*http
 	return httpClient.Do(req)
 }
 
+// handler logs an import error to Salesforce, handling token refresh and retries.
 func handler(ctx context.Context, evt ErrorEvent) error {
 	token, err := getToken(ctx)
 	if err != nil {
@@ -145,12 +149,14 @@ func handler(ctx context.Context, evt ErrorEvent) error {
 	return nil
 }
 
+// realMain configures logging and starts the provided handler.
 func realMain(start func(interface{})) {
 	logger, _ := zap.NewProduction()
 	log = logger.Sugar()
 	start(handler)
 }
 
+// main is the Lambda entrypoint.
 func main() {
 	realMain(lambdaStart)
 }

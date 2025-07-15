@@ -35,6 +35,7 @@ var (
 	log       *zap.SugaredLogger
 )
 
+// handler checks the uploaded file for duplicates and stores a manifest entry.
 func handler(ctx context.Context, evt events.S3Event) error {
 	rec := evt.Records[0]
 	bucket := rec.S3.Bucket.Name
@@ -64,6 +65,7 @@ func handler(ctx context.Context, evt events.S3Event) error {
 	return nil
 }
 
+// main initializes AWS clients and starts the Lambda handler.
 func main() {
 	cfg, err := loadConfig(context.Background())
 	if err != nil {
