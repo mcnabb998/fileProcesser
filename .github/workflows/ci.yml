@@ -42,15 +42,15 @@ jobs:
           done
       - name: Validate schema
         run: |
-          pip install jsonschema
-          python - <<'PY'
-          import json, jsonschema, glob
-          schema=json.load(open('schema/profile_v2.schema.json'))
-          for f in glob.glob('sample-profiles/*.json'):
-            data=json.load(open(f))
-            jsonschema.validate(data, schema)
-          print('schema ok')
-          PY
+        pip install jsonschema
+        python - <<'PY'
+        import json, jsonschema, glob
+        schema=json.load(open('schema/profile_v2.schema.json'))
+        for f in glob.glob('sample-profiles/*.json'):
+          data=json.load(open(f))
+          jsonschema.validate(data, schema)
+        print('schema ok')
+PY
       - name: SAM validate
         run: sam validate --region us-east-1
       - name: Ensure bin directory exists
