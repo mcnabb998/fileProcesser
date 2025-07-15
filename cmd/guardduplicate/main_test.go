@@ -132,8 +132,12 @@ func TestHandlerSuccess(t *testing.T) {
 }
 
 func TestMainFunc(t *testing.T) {
-	os.Setenv("AWS_REGION", "us-east-1")
-	os.Setenv("AWS_EC2_METADATA_DISABLED", "true")
+	if err := os.Setenv("AWS_REGION", "us-east-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Setenv("AWS_EC2_METADATA_DISABLED", "true"); err != nil {
+		t.Fatal(err)
+	}
 	called := false
 	start = func(i interface{}) { called = true }
 	loadConfig = func(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
