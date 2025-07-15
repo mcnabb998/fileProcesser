@@ -25,6 +25,8 @@ Resources:
 
   GuardDuplicate:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       Handler: bin/guardduplicate
       CodeUri: .
@@ -40,6 +42,8 @@ Resources:
 
   ParseFile:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       Handler: bin/parsefile
       CodeUri: .
@@ -55,6 +59,8 @@ Resources:
 
   ArchiveMetrics:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       Handler: bin/archive
       CodeUri: .
@@ -73,6 +79,8 @@ Resources:
 
   LogImportError:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       Handler: bin/logimporterror
       CodeUri: .
