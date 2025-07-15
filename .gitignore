@@ -1,0 +1,35 @@
+# Binaries for programs and plugins
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, coverage reports
+*.test
+coverage.out
+
+# Output directories
+build/
+dist/
+
+# Vendor directory
+vendor/
+
+# IDE directories and settings
+.idea/
+.vscode/
+
+# OS or editor swap files
+.DS_Store
+*.swp
+*.swo
+*.tmp
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment files
+.env
