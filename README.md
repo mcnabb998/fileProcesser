@@ -36,9 +36,15 @@ graph LR
 - **LogImportError** – upserts `Import_Error__c` records through REST API.
 
 ## Running unit tests locally
-Run all tests and linters with:
+Execute all Go unit tests:
 ```bash
-make build
+go test ./...
+```
+
+## Running end-to-end tests
+Run the end-to-end workflow test (Docker required):
+```bash
+E2E=1 go test -tags e2e ./tests/e2e
 ```
 
 ## Invoking Lambdas with SAM CLI events
