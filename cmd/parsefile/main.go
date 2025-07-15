@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"plugin"
 	"strings"
@@ -17,31 +18,46 @@ import (
 	"go.uber.org/zap"
 )
 
-const chunkSize = 1000
+const (
+	chunkSize = 1000
+	maxMemory = 25 * 1024 * 1024
+)
 
-type Parser interface {
-	Parse(io.Reader) ([]map[string]string, error)
+type parseFunc func(io.Reader) ([]map[string]string, error)
+
+type s3API interface {
+	GetObject(context.Context, *s3.GetObjectInput, ...func(*s3.Options)) (*s3.GetObjectOutput, error)
+	PutObject(context.Context, *s3.PutObjectInput, ...func(*s3.Options)) (*s3.PutObjectOutput, error)
 }
 
 var (
-	s3Client *s3.Client
+	s3Client s3API
 	log      *zap.SugaredLogger
 )
 
-func loadParser(path string) (Parser, error) {
+func getParserID() string {
+	id := os.Getenv("PARSER_ID")
+	if id == "" {
+		id = "csv_pipe"
+	}
+	return id
+}
+
+func loadParser(id string) (parseFunc, error) {
+	path := fmt.Sprintf("/opt/plugins/%s.so", id)
 	p, err := plugin.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open plugin: %w", err)
 	}
-	sym, err := p.Lookup("Parser")
+	sym, err := p.Lookup("Parse")
 	if err != nil {
-		return nil, fmt.Errorf("lookup Parser: %w", err)
+		return nil, fmt.Errorf("lookup Parse: %w", err)
 	}
-	parser, ok := sym.(Parser)
+	fn, ok := sym.(func(io.Reader) ([]map[string]string, error))
 	if !ok {
 		return nil, fmt.Errorf("invalid parser type")
 	}
-	return parser, nil
+	return parseFunc(fn), nil
 }
 
 func trimRows(rows []map[string]string) {
@@ -52,13 +68,69 @@ func trimRows(rows []map[string]string) {
 	}
 }
 
-func handler(ctx context.Context, evt events.S3Event) error {
+type profileSpec struct {
+	Required []string `json:"required"`
+}
+
+func loadProfile() (profileSpec, error) {
+	v := os.Getenv("PROFILE_JSON")
+	if v == "" {
+		return profileSpec{}, nil
+	}
+	var p profileSpec
+	if err := json.Unmarshal([]byte(v), &p); err != nil {
+		return profileSpec{}, fmt.Errorf("decode profile: %w", err)
+	}
+	return p, nil
+}
+
+func validateHeader(rows []map[string]string, req []string) error {
+	if len(rows) == 0 {
+		return fmt.Errorf("no rows")
+	}
+	for _, c := range req {
+		if _, ok := rows[0][c]; !ok {
+			return fmt.Errorf("missing column %s", c)
+		}
+	}
+	return nil
+}
+
+func filterRows(rows []map[string]string, req []string) ([]map[string]string, int) {
+	var out []map[string]string
+	bad := 0
+	for _, r := range rows {
+		valid := true
+		for _, c := range req {
+			if strings.TrimSpace(r[c]) == "" {
+				valid = false
+				break
+			}
+		}
+		if valid {
+			out = append(out, r)
+		} else {
+			bad++
+		}
+	}
+	return out, bad
+}
+
+type Output struct {
+	Rows    []map[string]string `json:"rows,omitempty"`
+	Keys    []string            `json:"keys,omitempty"`
+	BadRows int                 `json:"badRows"`
+}
+
+func handler(ctx context.Context, evt events.S3Event) (Output, error) {
 	rec := evt.Records[0]
 	bucket := rec.S3.Bucket.Name
 	key := rec.S3.Object.Key
+	size := rec.S3.Object.Size
+
 	obj, err := s3Client.GetObject(ctx, &s3.GetObjectInput{Bucket: &bucket, Key: &key})
 	if err != nil {
-		return fmt.Errorf("get object: %w", err)
+		return Output{}, fmt.Errorf("get object: %w", err)
 	}
 	defer func() {
 		if cerr := obj.Body.Close(); cerr != nil {
@@ -66,17 +138,32 @@ func handler(ctx context.Context, evt events.S3Event) error {
 		}
 	}()
 
-	parser, err := loadParser("/opt/plugins/csv_pipe.so")
+	parser, err := loadParser(getParserID())
 	if err != nil {
-		return err
+		return Output{}, err
 	}
-	rows, err := parser.Parse(obj.Body)
+	rows, err := parser(obj.Body)
 	if err != nil {
-		return fmt.Errorf("parse: %w", err)
+		return Output{}, fmt.Errorf("parse: %w", err)
 	}
 	trimRows(rows)
 
+	prof, err := loadProfile()
+	if err != nil {
+		return Output{}, err
+	}
+	if err := validateHeader(rows, prof.Required); err != nil {
+		return Output{}, err
+	}
+	rows, bad := filterRows(rows, prof.Required)
+
+	if size <= maxMemory {
+		log.Infow("processed", "key", key, "rows", len(rows), "bad", bad)
+		return Output{Rows: rows, BadRows: bad}, nil
+	}
+
 	baseKey := strings.TrimSuffix(key, filepath.Ext(key))
+	var keys []string
 	for i := 0; i < len(rows); i += chunkSize {
 		end := i + chunkSize
 		if end > len(rows) {
@@ -90,20 +177,28 @@ func handler(ctx context.Context, evt events.S3Event) error {
 		}
 		outKey := fmt.Sprintf("%s_%d.jsonl", baseKey, i/chunkSize)
 		if _, err := s3Client.PutObject(ctx, &s3.PutObjectInput{Bucket: &bucket, Key: &outKey, Body: bytes.NewReader(buf.Bytes())}); err != nil {
-			return fmt.Errorf("put chunk: %w", err)
+			return Output{}, fmt.Errorf("put chunk: %w", err)
 		}
+		keys = append(keys, outKey)
 	}
-	log.Infow("processed", "key", key, "rows", len(rows))
-	return nil
+	log.Infow("processed", "key", key, "chunks", len(keys), "bad", bad)
+	return Output{Keys: keys, BadRows: bad}, nil
 }
 
-func main() {
-	cfg, err := config.LoadDefaultConfig(context.Background())
+var lambdaStart = func(h interface{}) {
+	lambda.Start(h)
+}
+
+var loadConfig = config.LoadDefaultConfig
+
+func run() error {
+	cfg, err := loadConfig(context.Background())
 	if err != nil {
-		panic(err)
+		return err
 	}
 	logger, _ := zap.NewProduction()
 	log = logger.Sugar()
 	s3Client = s3.NewFromConfig(cfg)
-	lambda.Start(handler)
+	lambdaStart(handler)
+	return nil
 }
