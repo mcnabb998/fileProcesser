@@ -1,0 +1,21 @@
+---
+version: 1
+interactions:
+- request:
+    body: '{"fileKey":"f","error":"bad"}'
+    form: {}
+    headers:
+      Content-Type:
+      - application/json
+    url: http://127.0.0.1:41883
+    method: POST
+  response:
+    body: ""
+    headers:
+      Content-Length:
+      - "0"
+      Date:
+      - Tue, 15 Jul 2025 04:13:31 GMT
+    status: 200 OK
+    code: 200
+    duration: ""

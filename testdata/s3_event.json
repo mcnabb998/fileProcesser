@@ -1,0 +1,10 @@
+{
+  "Records": [
+    {
+      "s3": {
+        "bucket": {"name": "source-bucket"},
+        "object": {"key": "sample.qns", "size": 10}
+      }
+    }
+  ]
+}
