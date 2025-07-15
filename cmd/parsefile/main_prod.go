@@ -2,7 +2,7 @@
 
 package main
 
-import "github.com/aws/aws-lambda-go/lambda"
+import _ "github.com/aws/aws-lambda-go/lambda"
 
 // main is the production entrypoint invoked by AWS Lambda.
 func main() {

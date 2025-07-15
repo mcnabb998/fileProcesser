@@ -38,6 +38,8 @@ jobs:
           done
       - name: SAM validate
         run: sam validate --region us-east-1
+      - name: Ensure bin directory exists
+        run: mkdir -p ./bin
       - name: Build binaries
         run: make build
       - name: SAM build
