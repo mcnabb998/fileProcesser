@@ -13,4 +13,4 @@ jobs:
         curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
     - run: go test ./...
     - run: golangci-lint run
-    - run: sam validate
+    - run: sam validate --region us-east-1
