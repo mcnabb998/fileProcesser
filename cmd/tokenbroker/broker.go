@@ -97,7 +97,9 @@ func (b *Broker) getToken(ctx context.Context) (string, error) {
 
 	token, err := b.fetchToken(ctx)
 	if err != nil {
-		b.store.Unlock(ctx)
+		if uerr := b.store.Unlock(ctx); uerr != nil {
+			b.log.Warnw("unlock", "error", uerr)
+		}
 		return "", err
 	}
 	expTime := time.Now().Add(cacheTTL)
@@ -108,7 +110,7 @@ func (b *Broker) getToken(ctx context.Context) (string, error) {
 	b.token = token
 	b.expiry = expTime
 	b.mu.Unlock()
-	b.cw.PutMetricData(ctx, &cloudwatch.PutMetricDataInput{
+	if _, err := b.cw.PutMetricData(ctx, &cloudwatch.PutMetricDataInput{
 		Namespace: aws.String("TokenBroker"),
 		MetricData: []cwtypes.MetricDatum{
 			{
@@ -116,7 +118,9 @@ func (b *Broker) getToken(ctx context.Context) (string, error) {
 				Value:      aws.Float64(1),
 			},
 		},
-	})
+	}); err != nil {
+		b.log.Warnw("metric", "error", err)
+	}
 	return token, nil
 }
 
@@ -150,7 +154,9 @@ func (b *Broker) fetchToken(ctx context.Context) (string, error) {
 		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 			return "", err
 		}
-		resp.Body.Close()
+		if cerr := resp.Body.Close(); cerr != nil {
+			b.log.Warnw("close body", "error", cerr)
+		}
 		return out.AccessToken, nil
 	}
 	return "", fmt.Errorf("unauthorized")

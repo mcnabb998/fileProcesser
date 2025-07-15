@@ -93,7 +93,7 @@ func TestCachedToken(t *testing.T) {
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
-		fmt.Fprint(w, `{"access_token":"t1"}`)
+		_, _ = fmt.Fprint(w, `{"access_token":"t1"}`)
 	}))
 	defer srv.Close()
 	b := &Broker{
@@ -125,14 +125,14 @@ func TestConcurrentLock(t *testing.T) {
 	calls := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls++
-		fmt.Fprint(w, `{"access_token":"t2"}`)
+		_, _ = fmt.Fprint(w, `{"access_token":"t2"}`)
 	}))
 	defer srv.Close()
 	b := &Broker{store: store, cw: &fakeCW{}, httpClient: srv.Client(), sfURL: srv.URL, creds: map[string]string{"grant_type": "password"}, log: zap.NewNop().Sugar()}
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go func() { b.getToken(context.Background()); wg.Done() }()
-	go func() { b.getToken(context.Background()); wg.Done() }()
+	go func() { _, _ = b.getToken(context.Background()); wg.Done() }()
+	go func() { _, _ = b.getToken(context.Background()); wg.Done() }()
 	wg.Wait()
 	if calls != 1 {
 		t.Fatalf("expected 1 refresh, got %d", calls)
@@ -162,7 +162,7 @@ func TestSalesforce401Rotation(t *testing.T) {
 			w.WriteHeader(401)
 			return
 		}
-		fmt.Fprint(w, `{"access_token":"new"}`)
+		_, _ = fmt.Fprint(w, `{"access_token":"new"}`)
 	}))
 	defer srv.Close()
 	b := &Broker{store: store, cw: &fakeCW{}, httpClient: srv.Client(), sfURL: srv.URL, creds: map[string]string{"grant_type": "password"}, log: zap.NewNop().Sugar()}
