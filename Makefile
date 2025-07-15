@@ -1,8 +1,9 @@
 BINS=guardduplicate parsefile archive logimporterror
 
 build:
+	mkdir -p bin
 	@for b in $(BINS); do \
-		GOOS=linux GOARCH=arm64 go build -o bin/$$b cmd/$$b/main.go; \
+	GOOS=linux GOARCH=arm64 go build -o bin/$$b cmd/$$b/main.go; \
 	done
 
 sam-deploy-dev:
