@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  localstack:
+    image: localstack/localstack
+    ports:
+      - '4566:4566'
+    environment:
+      - SERVICES=s3,dynamodb,cloudwatch,lambda
+      - LAMBDA_EXECUTOR=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  stepfunctions:
+    image: amazon/aws-stepfunctions-local
+    command: ['--aws-endpoint', 'http://localstack:4566']
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    depends_on:
+      - localstack
+    ports:
+      - '8083:8083'
+  wiremock:
+    image: wiremock/wiremock
+    ports:
+      - '8080:8080'
