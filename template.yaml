@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: File processor sample
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: go1.x
+
+Resources:
+  SourceBucket:
+    Type: AWS::S3::Bucket
+  ArchiveBucket:
+    Type: AWS::S3::Bucket
+  ManifestTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: FileKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: FileKey
+          KeyType: HASH
+
+  GuardDuplicate:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: bin/guardduplicate
+      CodeUri: .
+      Environment:
+        Variables:
+          MANIFEST_TABLE: !Ref ManifestTable
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ManifestTable
+        - S3ReadPolicy:
+            BucketName: !Ref SourceBucket
+
+  ParseFile:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: bin/parsefile
+      CodeUri: .
+      Environment:
+        Variables:
+          MANIFEST_TABLE: !Ref ManifestTable
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - S3ReadPolicy:
+            BucketName: !Ref SourceBucket
+        - S3WritePolicy:
+            BucketName: !Ref SourceBucket
+
+  ArchiveMetrics:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: bin/archive
+      CodeUri: .
+      Environment:
+        Variables:
+          MANIFEST_TABLE: !Ref ManifestTable
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ManifestTable
+        - S3ReadPolicy:
+            BucketName: !Ref SourceBucket
+        - S3WritePolicy:
+            BucketName: !Ref ArchiveBucket
+        - CloudWatchPutMetricPolicy: {}
+
+  LogImportError:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: bin/logimporterror
+      CodeUri: .
+      Policies:
+        - AWSLambdaBasicExecutionRole
+
+  BatchWrapper:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Definition:
+        StartAt: Guard
+        States:
+          Guard:
+            Type: Task
+            Resource: !GetAtt GuardDuplicate.Arn
+            Next: Parse
+          Parse:
+            Type: Task
+            Resource: !GetAtt ParseFile.Arn
+            Next: Archive
+          Archive:
+            Type: Task
+            Resource: !GetAtt ArchiveMetrics.Arn
+            End: true
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref GuardDuplicate
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ParseFile
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ArchiveMetrics
+Outputs:
+  StateMachine:
+    Value: !Ref BatchWrapper
