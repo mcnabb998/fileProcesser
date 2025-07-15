@@ -76,10 +76,14 @@ func Parse(r io.Reader) ([]map[string]string, error) {
 `
 
 func buildPlugin(t *testing.T, id string) {
-	dir := "/opt/plugins"
-	os.MkdirAll(dir, 0755)
-	src := filepath.Join(t.TempDir(), "p.go")
-	os.WriteFile(src, []byte(pluginSrc), 0644)
+       dir := "/opt/plugins"
+       if err := os.MkdirAll(dir, 0755); err != nil {
+               t.Fatalf("mkdir: %v", err)
+       }
+       src := filepath.Join(t.TempDir(), "p.go")
+       if err := os.WriteFile(src, []byte(pluginSrc), 0644); err != nil {
+               t.Fatalf("write plugin: %v", err)
+       }
 	out := filepath.Join(dir, id+".so")
 	cmd := exec.Command("go", "build", "-buildmode=plugin", "-o", out, src)
 	if outb, err := cmd.CombinedOutput(); err != nil {
@@ -96,8 +100,12 @@ func TestHandler(t *testing.T) {
 	buildPlugin(t, "csv_pipe")
 
 	t.Run("small", func(t *testing.T) {
-		os.Setenv("PARSER_ID", "csv_pipe")
-		os.Setenv("PROFILE_JSON", `{"required":["header1","header2"]}`)
+               if err := os.Setenv("PARSER_ID", "csv_pipe"); err != nil {
+                       t.Fatalf("setenv: %v", err)
+               }
+               if err := os.Setenv("PROFILE_JSON", `{"required":["header1","header2"]}`); err != nil {
+                       t.Fatalf("setenv: %v", err)
+               }
 		f := &fakeS3{objects: map[string][]byte{"f.qns": []byte("header1|header2\n v1 | v2 ")}}
 		s3Client = f
 		out, err := handler(context.Background(), newEvent("f.qns", 10))
@@ -117,7 +125,9 @@ func TestHandler(t *testing.T) {
 		}
 		f := &fakeS3{objects: map[string][]byte{"big.qns": []byte(sb.String())}}
 		s3Client = f
-		os.Setenv("PROFILE_JSON", `{"required":["header1","header2"]}`)
+               if err := os.Setenv("PROFILE_JSON", `{"required":["header1","header2"]}`); err != nil {
+                       t.Fatalf("setenv: %v", err)
+               }
 		out, err := handler(context.Background(), newEvent("big.qns", 30000000))
 		if err != nil {
 			t.Fatalf("handler error: %v", err)
@@ -133,7 +143,9 @@ func TestHandler(t *testing.T) {
 	t.Run("missing column", func(t *testing.T) {
 		f := &fakeS3{objects: map[string][]byte{"bad.qns": []byte("header1\nval")}}
 		s3Client = f
-		os.Setenv("PROFILE_JSON", `{"required":["header1","header2"]}`)
+               if err := os.Setenv("PROFILE_JSON", `{"required":["header1","header2"]}`); err != nil {
+                       t.Fatalf("setenv: %v", err)
+               }
 		if _, err := handler(context.Background(), newEvent("bad.qns", 10)); err == nil {
 			t.Fatal("expected error")
 		}
@@ -142,7 +154,9 @@ func TestHandler(t *testing.T) {
 	t.Run("malformed", func(t *testing.T) {
 		f := &fakeS3{objects: map[string][]byte{"m.qns": []byte("header1|header2\nval1")}}
 		s3Client = f
-		os.Setenv("PROFILE_JSON", `{"required":[]}`)
+               if err := os.Setenv("PROFILE_JSON", `{"required":[]}`); err != nil {
+                       t.Fatalf("setenv: %v", err)
+               }
 		if _, err := handler(context.Background(), newEvent("m.qns", 10)); err == nil {
 			t.Fatal("expected error")
 		}
