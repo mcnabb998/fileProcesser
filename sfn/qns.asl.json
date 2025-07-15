@@ -1,0 +1,42 @@
+{
+  "Comment": "QNS file processing",
+  "StartAt": "GuardDuplicate",
+  "States": {
+    "GuardDuplicate": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:123456789012:function:GuardDuplicate",
+      "Next": "ParseFile",
+      "TimeoutSeconds": 60,
+      "Retry": [{
+        "ErrorEquals": ["Lambda.ServiceException"],
+        "IntervalSeconds": 2,
+        "MaxAttempts": 2,
+        "BackoffRate": 2
+      }]
+    },
+    "ParseFile": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:123456789012:function:ParseFile",
+      "Next": "ArchiveMetrics",
+      "TimeoutSeconds": 60,
+      "Retry": [{
+        "ErrorEquals": ["Lambda.ServiceException"],
+        "IntervalSeconds": 2,
+        "MaxAttempts": 2,
+        "BackoffRate": 2
+      }]
+    },
+    "ArchiveMetrics": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:us-east-1:123456789012:function:ArchiveMetrics",
+      "End": true,
+      "TimeoutSeconds": 60,
+      "Retry": [{
+        "ErrorEquals": ["Lambda.ServiceException"],
+        "IntervalSeconds": 2,
+        "MaxAttempts": 2,
+        "BackoffRate": 2
+      }]
+    }
+  }
+}

@@ -1,5 +1,8 @@
 ## Step-Function Audit
-_No Step Functions found_
+| File | Status |
+|------|--------|
+| sfn/campaign.asl.json | ✅ |
+| sfn/qns.asl.json | ✅ |
 
 
-Missing ASL files: campaign, qns
+State Machine Integrity ✅

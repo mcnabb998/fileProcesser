@@ -1,1 +1,21 @@
-{"name":"qns","setting":"example"}
+{
+  "parserId": "csv_pipe",
+  "maxBytes": 8000000,
+  "maxRows": 600000,
+  "rowStateMachineArn": "arn:aws:states:us-east-1:123456789012:stateMachine:BatchWrapper",
+  "mapMaxConcurrency": 200,
+  "rowValidation": {
+    "required": ["MemberNumber", "QuoteNumber", "Email"],
+    "regex": { "Email": ".+@.+" }
+  },
+  "targets": [
+    {
+      "object": "Account",
+      "externalId": "Member_Number__c",
+      "fieldMap": {
+        "MemberNumber": "Member_Number__c",
+        "Email": "PersonEmail"
+      }
+    }
+  ]
+}

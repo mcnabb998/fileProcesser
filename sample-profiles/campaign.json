@@ -1,1 +1,18 @@
-{"name":"campaign","setting":"example"}
+{
+  "parserId": "csv_pipe",
+  "maxBytes": 1000000,
+  "maxRows": 10000,
+  "rowStateMachineArn": "arn:aws:states:us-east-1:123456789012:stateMachine:BatchWrapper",
+  "mapMaxConcurrency": 10,
+  "rowValidation": {
+    "required": ["ID", "Email"],
+    "regex": { "Email": ".+@.+" }
+  },
+  "targets": [
+    {
+      "object": "Contact",
+      "externalId": "External_ID__c",
+      "fieldMap": { "ID": "External_ID__c", "Email": "Email__c" }
+    }
+  ]
+}
