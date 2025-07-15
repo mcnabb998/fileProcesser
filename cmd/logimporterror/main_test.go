@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,7 +34,9 @@ func TestFirstInsert(t *testing.T) {
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		brokerCalls++
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -66,7 +69,9 @@ func TestFirstInsert(t *testing.T) {
 func TestDuplicateIncrement(t *testing.T) {
 	evt := loadEvent(t)
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -82,7 +87,9 @@ func TestDuplicateIncrement(t *testing.T) {
 			}
 			w.WriteHeader(http.StatusNoContent)
 		case http.MethodGet:
-			io.WriteString(w, `{"Retry_Count__c":1}`)
+			if _, err := io.WriteString(w, `{"Retry_Count__c":1}`); err != nil {
+				t.Fatal(err)
+			}
 		default:
 			t.Fatalf("unexpected method %s", r.Method)
 		}
@@ -108,7 +115,9 @@ func TestDuplicateIncrement(t *testing.T) {
 func TestValidationError(t *testing.T) {
 	evt := loadEvent(t)
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -141,7 +150,9 @@ func TestBroker401Retry(t *testing.T) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -166,7 +177,9 @@ func TestBroker401Retry(t *testing.T) {
 func TestSF503RetryFail(t *testing.T) {
 	evt := loadEvent(t)
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -224,7 +237,9 @@ func TestBroker500(t *testing.T) {
 func TestSalesforce401Refresh(t *testing.T) {
 	evt := loadEvent(t)
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -252,10 +267,42 @@ func TestSalesforce401Refresh(t *testing.T) {
 	}
 }
 
+func TestSalesforce401RefreshFail(t *testing.T) {
+	evt := loadEvent(t)
+	call := 0
+	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		call++
+		if call == 1 {
+			if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer broker.Close()
+
+	sf := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer sf.Close()
+
+	brokerURL = broker.URL
+	sfAPI = sf.URL
+	log = zap.NewNop().Sugar()
+	sleep = func(time.Duration) {}
+
+	if err := handler(context.Background(), evt); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
 func TestRetryGetFailure(t *testing.T) {
 	evt := loadEvent(t)
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -281,7 +328,9 @@ func TestRetryGetFailure(t *testing.T) {
 func TestRetryDecodeError(t *testing.T) {
 	evt := loadEvent(t)
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -289,7 +338,9 @@ func TestRetryDecodeError(t *testing.T) {
 		if r.Method == http.MethodPatch {
 			w.WriteHeader(http.StatusNoContent)
 		} else {
-			io.WriteString(w, "bad json")
+			if _, err := io.WriteString(w, "bad json"); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}))
 	defer sf.Close()
@@ -307,12 +358,17 @@ func TestRetryDecodeError(t *testing.T) {
 func TestRetryGetRequestError(t *testing.T) {
 	evt := loadEvent(t)
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
 	prevClient := httpClient
 	httpClient = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if strings.HasPrefix(req.URL.String(), broker.URL) {
+			return http.DefaultTransport.RoundTrip(req)
+		}
 		if req.Method == http.MethodGet {
 			return nil, errors.New("boom")
 		}
@@ -334,7 +390,9 @@ func TestRetryGetRequestError(t *testing.T) {
 func TestRetryUpdateError(t *testing.T) {
 	evt := loadEvent(t)
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 
@@ -394,13 +452,20 @@ func TestHandlerTokenError(t *testing.T) {
 
 func TestHandlerRequestError(t *testing.T) {
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, `{"access_token":"tok"}`)
+		if _, err := io.WriteString(w, `{"access_token":"tok"}`); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 	brokerURL = broker.URL
 	sfAPI = "http://example.com"
 	prevClient := httpClient
-	httpClient = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("boom") })}
+	httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if strings.HasPrefix(r.URL.String(), broker.URL) {
+			return http.DefaultTransport.RoundTrip(r)
+		}
+		return nil, errors.New("boom")
+	})}
 	log = zap.NewNop().Sugar()
 	sleep = func(time.Duration) {}
 	if err := handler(context.Background(), loadEvent(t)); err == nil {
@@ -436,7 +501,9 @@ func TestGetTokenErrors(t *testing.T) {
 func TestGetTokenDecodeError(t *testing.T) {
 	broker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, "bad")
+		if _, err := io.WriteString(w, "bad"); err != nil {
+			t.Fatal(err)
+		}
 	}))
 	defer broker.Close()
 	brokerURL = broker.URL

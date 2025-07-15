@@ -48,7 +48,7 @@ func getToken(ctx context.Context) (string, error) {
 			return "", fmt.Errorf("do token request: %w", err)
 		}
 		b, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode == http.StatusOK {
 			var tr tokenResp
 			if err := json.Unmarshal(b, &tr); err != nil {
@@ -99,7 +99,7 @@ func handler(ctx context.Context, evt ErrorEvent) error {
 			return fmt.Errorf("patch: %w", err)
 		}
 		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			token, err = getToken(ctx)
 			if err != nil {
 				return err
@@ -107,7 +107,7 @@ func handler(ctx context.Context, evt ErrorEvent) error {
 			continue
 		}
 		if resp.StatusCode >= 400 {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if attempt == 2 {
 				return fmt.Errorf("salesforce status: %s", resp.Status)
 			}
@@ -116,7 +116,7 @@ func handler(ctx context.Context, evt ErrorEvent) error {
 		}
 		break
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNoContent {
 		// fetch current retry count
@@ -125,7 +125,7 @@ func handler(ctx context.Context, evt ErrorEvent) error {
 			return fmt.Errorf("get retry count: %w", err)
 		}
 		b, _ := io.ReadAll(gresp.Body)
-		gresp.Body.Close()
+		_ = gresp.Body.Close()
 		if gresp.StatusCode >= 300 {
 			return fmt.Errorf("get retry status: %s", gresp.Status)
 		}
