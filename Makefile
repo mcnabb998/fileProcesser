@@ -15,4 +15,13 @@ sam-local-test:
 	sam local invoke GuardDuplicate --event testdata/s3_event.json
 
 build-%:
-	$(MAKE) build
+        $(MAKE) build
+
+up:
+	docker-compose up -d
+
+test:
+	E2E=1 go test ./tests/e2e -v -coverprofile=e2e-cover.out
+
+down:
+	docker-compose down

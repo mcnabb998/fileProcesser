@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  unit-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -57,6 +57,38 @@ PY
         run: mkdir -p ./bin
       - name: Build binaries
         run: make build
+
+  integration-test:
+    needs: unit-test
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24-dind
+        privileged: true
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+      - name: Start stack
+        run: make up
+      - name: Run tests
+        run: |
+          E2E=1 go test ./tests/e2e -v 2>&1 | tee test.log
+          go-junit-report < test.log > e2e-report.xml
+      - name: Stop stack
+        run: make down
+      - uses: actions/upload-artifact@v3
+        with:
+          name: e2e-report
+          path: e2e-report.xml
+
+  sam-deploy-dev:
+    needs: integration-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: aws-actions/setup-sam@v2
       - name: SAM build
         run: sam build
       - name: Dev deploy
