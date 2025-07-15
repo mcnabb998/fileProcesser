@@ -189,8 +189,10 @@ var lambdaStart = func(h interface{}) {
 	lambda.Start(h)
 }
 
+var loadConfig = config.LoadDefaultConfig
+
 func run() error {
-	cfg, err := config.LoadDefaultConfig(context.Background())
+	cfg, err := loadConfig(context.Background())
 	if err != nil {
 		return err
 	}
