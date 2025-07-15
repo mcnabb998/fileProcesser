@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Loader retrieves and caches JSON profiles from SSM Parameter Store.
 type Loader struct {
 	client *ssm.Client
 	cache  map[string]map[string]any
@@ -17,10 +18,12 @@ type Loader struct {
 	log    *zap.SugaredLogger
 }
 
+// New creates a Loader using the provided SSM client and logger.
 func New(client *ssm.Client, log *zap.SugaredLogger) *Loader {
 	return &Loader{client: client, cache: make(map[string]map[string]any), log: log}
 }
 
+// Load fetches the profile with the given name from SSM, caching the result.
 func (l *Loader) Load(ctx context.Context, name string) (map[string]any, error) {
 	l.mu.Lock()
 	if p, ok := l.cache[name]; ok {

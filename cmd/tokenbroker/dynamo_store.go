@@ -18,12 +18,14 @@ type dynamoAPI interface {
 	UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
 }
 
+// dynamoStore persists tokens in DynamoDB for sharing across functions.
 type dynamoStore struct {
 	table string
 	pk    string
 	db    dynamoAPI
 }
 
+// Get retrieves the token record and its expiry from DynamoDB.
 func (d *dynamoStore) Get(ctx context.Context) (string, time.Time, bool, error) {
 	out, err := d.db.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: &d.table,
@@ -56,6 +58,7 @@ func (d *dynamoStore) Get(ctx context.Context) (string, time.Time, bool, error) 
 	return tokAttr.Value, exp, refreshing, nil
 }
 
+// TryLock attempts to mark the token as refreshing using a conditional write.
 func (d *dynamoStore) TryLock(ctx context.Context) (bool, error) {
 	_, err := d.db.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: &d.table,
@@ -79,6 +82,7 @@ func (d *dynamoStore) TryLock(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// Save stores the new token and expiration time in DynamoDB.
 func (d *dynamoStore) Save(ctx context.Context, token string, exp time.Time) error {
 	_, err := d.db.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: &d.table,
@@ -95,6 +99,7 @@ func (d *dynamoStore) Save(ctx context.Context, token string, exp time.Time) err
 	return err
 }
 
+// Unlock clears the refreshing flag in DynamoDB.
 func (d *dynamoStore) Unlock(ctx context.Context) error {
 	_, err := d.db.UpdateItem(ctx, &dynamodb.UpdateItemInput{
 		TableName: &d.table,

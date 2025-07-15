@@ -35,6 +35,7 @@ var (
 	log      *zap.SugaredLogger
 )
 
+// getParserID returns the parser plug-in id from PARSER_ID or a default.
 func getParserID() string {
 	id := os.Getenv("PARSER_ID")
 	if id == "" {
@@ -43,6 +44,7 @@ func getParserID() string {
 	return id
 }
 
+// loadParser loads the parser plug-in with the given id.
 func loadParser(id string) (parseFunc, error) {
 	path := fmt.Sprintf("/opt/plugins/%s.so", id)
 	p, err := plugin.Open(path)
@@ -60,6 +62,7 @@ func loadParser(id string) (parseFunc, error) {
 	return parseFunc(fn), nil
 }
 
+// trimRows trims whitespace from all values in the parsed rows.
 func trimRows(rows []map[string]string) {
 	for _, r := range rows {
 		for k, v := range r {
@@ -68,10 +71,12 @@ func trimRows(rows []map[string]string) {
 	}
 }
 
+// profileSpec defines required columns loaded from PROFILE_JSON.
 type profileSpec struct {
 	Required []string `json:"required"`
 }
 
+// loadProfile decodes the PROFILE_JSON environment variable.
 func loadProfile() (profileSpec, error) {
 	v := os.Getenv("PROFILE_JSON")
 	if v == "" {
@@ -84,6 +89,7 @@ func loadProfile() (profileSpec, error) {
 	return p, nil
 }
 
+// validateHeader ensures the required columns exist in the header row.
 func validateHeader(rows []map[string]string, req []string) error {
 	if len(rows) == 0 {
 		return fmt.Errorf("no rows")
@@ -96,6 +102,8 @@ func validateHeader(rows []map[string]string, req []string) error {
 	return nil
 }
 
+// filterRows drops rows missing required columns and returns the valid rows
+// and a count of invalid ones.
 func filterRows(rows []map[string]string, req []string) ([]map[string]string, int) {
 	var out []map[string]string
 	bad := 0
@@ -116,12 +124,16 @@ func filterRows(rows []map[string]string, req []string) ([]map[string]string, in
 	return out, bad
 }
 
+// Output is returned by the handler and either contains parsed rows or the
+// S3 keys of chunked JSONL files along with a count of invalid rows.
 type Output struct {
 	Rows    []map[string]string `json:"rows,omitempty"`
 	Keys    []string            `json:"keys,omitempty"`
 	BadRows int                 `json:"badRows"`
 }
 
+// handler downloads an uploaded file, parses it using a plug-in and writes
+// processed data back to S3 if the file is large.
 func handler(ctx context.Context, evt events.S3Event) (Output, error) {
 	rec := evt.Records[0]
 	bucket := rec.S3.Bucket.Name
@@ -185,12 +197,14 @@ func handler(ctx context.Context, evt events.S3Event) (Output, error) {
 	return Output{Keys: keys, BadRows: bad}, nil
 }
 
+// lambdaStart is overridden in tests to capture the handler start.
 var lambdaStart = func(h interface{}) {
 	lambda.Start(h)
 }
 
 var loadConfig = config.LoadDefaultConfig
 
+// run loads configuration, sets up dependencies and starts the Lambda.
 func run() error {
 	cfg, err := loadConfig(context.Background())
 	if err != nil {

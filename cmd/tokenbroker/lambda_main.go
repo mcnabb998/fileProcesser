@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// main wires together the broker dependencies and starts the Lambda handler.
 func main() {
 	cfg, err := config.LoadDefaultConfig(context.Background())
 	if err != nil {

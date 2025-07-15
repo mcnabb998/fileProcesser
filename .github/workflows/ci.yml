@@ -30,6 +30,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Validate profiles
         run: |
           for f in sample-profiles/*.json; do
@@ -37,6 +38,8 @@ jobs:
           done
       - name: SAM validate
         run: sam validate --region us-east-1
+      - name: Build binaries
+        run: make build
       - name: SAM build
         run: sam build
       - name: Dev deploy
