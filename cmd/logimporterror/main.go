@@ -33,7 +33,11 @@ func handler(ctx context.Context, evt ErrorEvent) error {
 	if err != nil {
 		return fmt.Errorf("do request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			log.Warnw("close body", "error", cerr)
+		}
+	}()
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("bad status: %s", resp.Status)
 	}

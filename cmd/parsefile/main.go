@@ -60,7 +60,11 @@ func handler(ctx context.Context, evt events.S3Event) error {
 	if err != nil {
 		return fmt.Errorf("get object: %w", err)
 	}
-	defer obj.Body.Close()
+	defer func() {
+		if cerr := obj.Body.Close(); cerr != nil {
+			log.Warnw("close body", "error", cerr)
+		}
+	}()
 
 	parser, err := loadParser("/opt/plugins/csv_pipe.so")
 	if err != nil {

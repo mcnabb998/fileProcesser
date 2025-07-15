@@ -39,7 +39,11 @@ func handler(ctx context.Context, evt events.S3Event) error {
 	if err != nil {
 		return fmt.Errorf("get object: %w", err)
 	}
-	defer obj.Body.Close()
+	defer func() {
+		if cerr := obj.Body.Close(); cerr != nil {
+			log.Warnw("close body", "error", cerr)
+		}
+	}()
 	h := sha256.New()
 	if _, err := io.Copy(h, obj.Body); err != nil {
 		return fmt.Errorf("read object: %w", err)

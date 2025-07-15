@@ -20,7 +20,11 @@ func TestHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rec.Stop()
+	defer func() {
+		if err := rec.Stop(); err != nil {
+			t.Fatalf("recorder stop error: %v", err)
+		}
+	}()
 	http.DefaultClient.Transport = rec
 	endpoint = srv.URL
 	evt := ErrorEvent{FileKey: "f", Error: "bad"}
