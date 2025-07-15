@@ -15,7 +15,7 @@ sam-local-test:
 	sam local invoke GuardDuplicate --event testdata/s3_event.json
 
 build-%:
-        $(MAKE) build
+	$(MAKE) build
 
 up:
 	docker-compose up -d
