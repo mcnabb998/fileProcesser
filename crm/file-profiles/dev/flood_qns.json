@@ -1,0 +1,45 @@
+{
+    "parserId": "csv_pipe",
+    "maxBytes": 8000000,
+    "maxRows": 600000,
+    "rowStateMachineArn": "arn:aws:states:us-east-1:123456789012:stateMachine:RowProcessorFlood",
+    "mapMaxConcurrency": 200,
+    "rowValidation": {
+        "required": ["MemberNumber", "QuoteNumber", "Email"],
+        "regex":    { "Email": ".+@.+" }
+    },
+    "targets": [
+        {
+            "object": "Account",
+            "externalId": "Member_Number__c",
+            "fieldMap": {
+                "MemberNumber": "Member_Number__c",
+                "FirstName":    "FirstName",
+                "LastName":     "LastName",
+                "Email":        "PersonEmail"
+            }
+        },
+        {
+            "object": "Opportunity",
+            "externalId": "Quote_Number__c",
+            "link": { "AccountId": "@{Account.id}" },
+            "fieldMap": {
+                "QuoteNumber":  "Quote_Number__c",
+                "QuoteDate":    "CloseDate",
+                "QuoteStage":   "StageName",
+                "CoverageAmt":  "Coverage_Amount__c",
+                "Premium":      "Premium__c"
+            }
+        },
+        {
+            "object": "Quote__c",
+            "externalId": "ExternalRowId__c",
+            "link": { "Opportunity__c": "@{Opportunity.id}" },
+            "fieldMap": {
+                "ExternalRowId": "ExternalRowId__c",
+                "Deductible":    "Deductible__c",
+                "ExpirationDate":"Expiration_Date__c"
+            }
+        }
+    ]
+}
