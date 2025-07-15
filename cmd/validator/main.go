@@ -24,6 +24,11 @@ func main() {
 		base := strings.TrimSuffix(filepath.Base(p), filepath.Ext(p))
 		expected := filepath.Join("build", base+".asl.json")
 		if _, err := os.Stat(expected); err != nil {
+			// fall back to sfn directory
+			expected = filepath.Join("sfn", base+".asl.json")
+			if _, err := os.Stat(expected); err == nil {
+				continue
+			}
 			task := filepath.Join("tasks", fmt.Sprintf("TASK-SFN-%03d_%s.md", taskID, base))
 			createTask(task, expected, []error{fmt.Errorf("missing ASL for profile %s", base)})
 			taskID++

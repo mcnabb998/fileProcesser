@@ -22,6 +22,10 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
             | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+      - name: Go mod tidy check
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
       - name: Lint
         run: golangci-lint run
       - name: Unit tests
@@ -36,6 +40,17 @@ jobs:
           for f in sample-profiles/*.json; do
             jq empty "$f"
           done
+      - name: Validate schema
+        run: |
+          pip install jsonschema
+          python - <<'PY'
+import json, jsonschema, glob
+schema=json.load(open('schema/profile_v2.schema.json'))
+for f in glob.glob('sample-profiles/*.json'):
+    data=json.load(open(f))
+    jsonschema.validate(data, schema)
+print('schema ok')
+PY
       - name: SAM validate
         run: sam validate --region us-east-1
       - name: Ensure bin directory exists
