@@ -58,7 +58,9 @@ func PolicyViolations(data []byte) []error {
 // ExtractLambdas returns lambda function names referenced by the definition.
 func ExtractLambdas(data []byte) []string {
 	var def struct{ States map[string]map[string]any }
-	json.Unmarshal(data, &def)
+	if err := json.Unmarshal(data, &def); err != nil {
+		return nil
+	}
 	var out []string
 	for _, s := range def.States {
 		if res, ok := s["Resource"].(string); ok {

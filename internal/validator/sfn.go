@@ -39,7 +39,7 @@ type ASLFile struct {
 func DiscoverASL(roots []string) ([]string, error) {
 	var files []string
 	for _, root := range roots {
-		filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return nil
 			}
@@ -51,6 +51,9 @@ func DiscoverASL(roots []string) ([]string, error) {
 			}
 			return nil
 		})
+		if err != nil {
+			return files, err
+		}
 	}
 	return files, nil
 }

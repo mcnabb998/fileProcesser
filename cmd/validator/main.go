@@ -11,7 +11,10 @@ import (
 
 func main() {
 	roots := []string{"sfn", "infra", "cmd"}
-	aslFiles, _ := validator.DiscoverASL(roots)
+	aslFiles, err := validator.DiscoverASL(roots)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "discover ASL: %v\n", err)
+	}
 
 	// check profiles for expected ASL
 	profiles, _ := filepath.Glob(filepath.Join("sample-profiles", "*.json"))
@@ -29,18 +32,26 @@ func main() {
 	}
 
 	reportDir := filepath.Join("audit")
-	os.MkdirAll(reportDir, 0o755)
+	if err := os.MkdirAll(reportDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "mkdir %s: %v\n", reportDir, err)
+	}
 	reportPath := filepath.Join(reportDir, "Project-Status-Report.md")
 
 	tasksDir := "tasks"
-	os.MkdirAll(tasksDir, 0o755)
+	if err := os.MkdirAll(tasksDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "mkdir %s: %v\n", tasksDir, err)
+	}
 
 	var table string
 	var hasErrors bool
 	for _, f := range aslFiles {
 		errs := validator.ValidateASL(f)
-		data, _ := os.ReadFile(f)
-		errs = append(errs, validator.PolicyViolations(data)...)
+		data, err := os.ReadFile(f)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("read: %w", err))
+		} else {
+			errs = append(errs, validator.PolicyViolations(data)...)
+		}
 		if len(errs) > 0 {
 			hasErrors = true
 			slug := filepath.Base(f)
@@ -69,7 +80,9 @@ func main() {
 
 	content := fmt.Sprintf("## Step-Function Audit\n%s%s\n", table, badge)
 
-	os.WriteFile(reportPath, []byte(content), 0o644)
+	if err := os.WriteFile(reportPath, []byte(content), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "write report: %v\n", err)
+	}
 }
 
 func createTask(path, file string, errs []error) {
@@ -82,5 +95,7 @@ func createTask(path, file string, errs []error) {
 	b += "\n## Acceptance Criteria\n- Updated definition passes validation and policy checks\n"
 	b += "\n## Suggested Steps\n- Review state machine structure\n- Add required fields or transitions\n"
 	b += "\nEffort: M\nOwner: TBD\n"
-	os.WriteFile(path, []byte(b), 0o644)
+	if err := os.WriteFile(path, []byte(b), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "write task %s: %v\n", path, err)
+	}
 }
