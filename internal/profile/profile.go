@@ -11,15 +11,20 @@ import (
 )
 
 // Loader retrieves and caches JSON profiles from SSM Parameter Store.
+// SSMAPI abstracts the SSM GetParameter operation for testability.
+type SSMAPI interface {
+	GetParameter(ctx context.Context, in *ssm.GetParameterInput, optFns ...func(*ssm.Options)) (*ssm.GetParameterOutput, error)
+}
+
 type Loader struct {
-	client *ssm.Client
+	client SSMAPI
 	cache  map[string]map[string]any
 	mu     sync.Mutex
 	log    *zap.SugaredLogger
 }
 
 // New creates a Loader using the provided SSM client and logger.
-func New(client *ssm.Client, log *zap.SugaredLogger) *Loader {
+func New(client SSMAPI, log *zap.SugaredLogger) *Loader {
 	return &Loader{client: client, cache: make(map[string]map[string]any), log: log}
 }
 
