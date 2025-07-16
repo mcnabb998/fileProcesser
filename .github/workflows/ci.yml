@@ -68,9 +68,11 @@ jobs:
           go-version: '1.22'
       - name: Set AWS credentials for LocalStack
         run: |
-          echo "AWS_ACCESS_KEY_ID=test" >> $GITHUB_ENV
-          echo "AWS_SECRET_ACCESS_KEY=test" >> $GITHUB_ENV
-          echo "AWS_DEFAULT_REGION=us-east-1" >> $GITHUB_ENV
+          {
+            echo "AWS_ACCESS_KEY_ID=test"
+            echo "AWS_SECRET_ACCESS_KEY=test"
+            echo "AWS_DEFAULT_REGION=us-east-1"
+          } >> "$GITHUB_ENV"
       - name: Install go-junit-report
         run: go install github.com/jstemmer/go-junit-report/v2@latest
       - name: Install docker-compose
