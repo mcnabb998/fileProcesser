@@ -216,7 +216,7 @@ def handler(event,context):
 		t.Fatalf("counts unexpected: %d %d", rp, rf)
 	}
 
-	resp, err := http.Get(wiremockURL + "/__admin/requests?method=POST&url=/sobjects/Import_Error__c")
+resp, err = http.Get(wiremockURL + "/__admin/requests?method=POST&url=/sobjects/Import_Error__c")
 	if err != nil {
 		t.Fatalf("wiremock reqs: %v", err)
 	}
