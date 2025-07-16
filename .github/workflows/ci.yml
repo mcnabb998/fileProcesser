@@ -1,21 +1,20 @@
 name: CI
-
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches:
+      - main
+    tags:
+      - 'v*'
   pull_request:
-
 permissions:
   contents: read
-
 jobs:
   unit-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Validate workflow
-        uses: rhysd/actionlint@v1
+        uses: rhysd/actionlint@v1.6.27
       - uses: actions/setup-go@v4
         with:
           go-version: '1.22'
@@ -23,13 +22,16 @@ jobs:
       - name: Install golangci-lint
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
-            | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+            | sh -s -- -b "$(go env GOPATH)/bin" v1.55.2
       - name: Go mod tidy check
         run: |
           go mod tidy
           git diff --exit-code go.mod go.sum
       - name: Lint
-        run: golangci-lint run
+        run: |
+          GOPATH_BIN="$(go env GOPATH)/bin"
+          export PATH="$GOPATH_BIN:$PATH"
+          golangci-lint run
       - name: Compile
         run: make build
       - name: Unit tests
@@ -46,34 +48,37 @@ jobs:
           done
       - name: Validate schema
         run: |
-        pip install jsonschema
-        python - <<'PY'
-        import json, jsonschema, glob
-        schema=json.load(open('schema/profile_v2.schema.json'))
-        for f in glob.glob('sample-profiles/*.json'):
-          data=json.load(open(f))
-          jsonschema.validate(data, schema)
-        print('schema ok')
-PY
+          pip install jsonschema
+          python -c "import json, jsonschema, glob; schema=json.load(open('schema/profile_v2.schema.json')); [jsonschema.validate(json.load(open(f)), schema) for f in glob.glob('sample-profiles/*.json')]; print('schema ok')"
       - name: SAM validate
         run: sam validate --region us-east-1
       - name: Ensure bin directory exists
         run: mkdir -p ./bin
-      - name: Build binaries
-        run: make build
-
+      # Removed redundant Build binaries step
   integration-test:
     needs: unit-test
     runs-on: ubuntu-latest
     services:
       docker:
         image: docker:24-dind
-        privileged: true
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
         with:
           go-version: '1.22'
+      - name: Set AWS credentials for LocalStack
+        run: |
+          {
+            echo "AWS_ACCESS_KEY_ID=test"
+            echo "AWS_SECRET_ACCESS_KEY=test"
+            echo "AWS_DEFAULT_REGION=us-east-1"
+          } >> "$GITHUB_ENV"
+      - name: Install go-junit-report
+        run: go install github.com/jstemmer/go-junit-report/v2@latest
+      - name: Install docker-compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
       - name: Start stack
         run: make up
       - name: Run tests
@@ -82,11 +87,10 @@ PY
           go-junit-report < test.log > e2e-report.xml
       - name: Stop stack
         run: make down
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: e2e-report
           path: e2e-report.xml
-
   sam-deploy-dev:
     needs: integration-test
     runs-on: ubuntu-latest
