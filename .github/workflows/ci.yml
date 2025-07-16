@@ -29,7 +29,8 @@ jobs:
           git diff --exit-code go.mod go.sum
       - name: Lint
         run: |
-          export PATH="$(go env GOPATH)/bin:$PATH"
+          GOPATH_BIN="$(go env GOPATH)/bin"
+          export PATH="$GOPATH_BIN:$PATH"
           golangci-lint run
       - name: Compile
         run: make build
