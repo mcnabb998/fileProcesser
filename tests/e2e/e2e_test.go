@@ -87,8 +87,8 @@ func TestE2E(t *testing.T) {
 
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("us-east-1"),
-		config.WithEndpointResolverWithOptions(aws.EndpointResolverWithOptionsFunc(
-			func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		config.WithEndpointResolver(aws.EndpointResolverFunc(
+			func(service, region string) (aws.Endpoint, error) {
 				return aws.Endpoint{URL: awsEndpoint, HostnameImmutable: true}, nil
 			})),
 	)
@@ -115,7 +115,11 @@ func TestE2E(t *testing.T) {
 	})
 
 	// wiremock stub
-	http.Post(wiremockURL+"/__admin/mappings", "application/json", bytes.NewBufferString(`{"request":{"method":"POST","url":"/sobjects/Import_Error__c"},"response":{"status":201}}`))
+	resp, err := http.Post(wiremockURL+"/__admin/mappings", "application/json", bytes.NewBufferString(`{"request":{"method":"POST","url":"/sobjects/Import_Error__c"},"response":{"status":201}}`))
+	if err != nil {
+		t.Fatalf("http.Post failed: %v", err)
+	}
+	defer resp.Body.Close()
 
 	guardCode := `import boto3,hashlib,os
 s3=boto3.client('s3',endpoint_url=os.environ['AWS_ENDPOINT'])
@@ -123,29 +127,29 @@ ddb=boto3.client('dynamodb',endpoint_url=os.environ['AWS_ENDPOINT'])
 TABLE=os.environ['MANIFEST_TABLE']
 
 def handler(event,context):
-    obj=s3.get_object(Bucket=event['bucket'],Key=event['key'])
-    data=obj['Body'].read()
-    sha=hashlib.sha256(data).hexdigest()
-    ddb.put_item(TableName=TABLE,Item={'FileKey':{'S':event['key']},'SHA256':{'S':sha}})
-    return event
+	obj=s3.get_object(Bucket=event['bucket'],Key=event['key'])
+	data=obj['Body'].read()
+	sha=hashlib.sha256(data).hexdigest()
+	ddb.put_item(TableName=TABLE,Item={'FileKey':{'S':event['key']},'SHA256':{'S':sha}})
+	return event
 `
 	parseCode := `import boto3,csv,io,os
 s3=boto3.client('s3',endpoint_url=os.environ['AWS_ENDPOINT'])
 
 def handler(event,context):
-    obj=s3.get_object(Bucket=event['bucket'],Key=event['key'])
-    rows=list(csv.DictReader(io.StringIO(obj['Body'].read().decode()),delimiter='|'))
-    good=[r for r in rows if '@' in r.get('email','')]
-    bad=[{'External_Row_Id__c':str(i+1),'message':'bad email'} for i,r in enumerate(rows) if '@' not in r.get('email','')]
-    return {'bucket':event['bucket'],'key':event['key'],'rowsProcessed':len(good),'rowsFailed':len(bad),'errors':bad}
+	obj=s3.get_object(Bucket=event['bucket'],Key=event['key'])
+	rows=list(csv.DictReader(io.StringIO(obj['Body'].read().decode()),delimiter='|'))
+	good=[r for r in rows if '@' in r.get('email','')]
+	bad=[{'External_Row_Id__c':str(i+1),'message':'bad email'} for i,r in enumerate(rows) if '@' not in r.get('email','')]
+	return {'bucket':event['bucket'],'key':event['key'],'rowsProcessed':len(good),'rowsFailed':len(bad),'errors':bad}
 `
 	logCode := `import os,json,urllib.request
 URL=os.environ['WIREMOCK']+'/sobjects/Import_Error__c'
 
 def handler(event,context):
-    req=urllib.request.Request(URL,data=json.dumps(event).encode(),headers={'Content-Type':'application/json'})
-    r=urllib.request.urlopen(req)
-    return {'status':r.status}
+	req=urllib.request.Request(URL,data=json.dumps(event).encode(),headers={'Content-Type':'application/json'})
+	r=urllib.request.urlopen(req)
+	return {'status':r.status}
 `
 	archiveCode := `import boto3,os
 cw=boto3.client('cloudwatch',endpoint_url=os.environ['AWS_ENDPOINT'])
@@ -153,9 +157,9 @@ ddb=boto3.client('dynamodb',endpoint_url=os.environ['AWS_ENDPOINT'])
 TABLE=os.environ['MANIFEST_TABLE']
 
 def handler(event,context):
-    ddb.update_item(TableName=TABLE,Key={'FileKey':{'S':event['key']}},UpdateExpression='SET rowsProcessed=:rp, rowsFailed=:rf',ExpressionAttributeValues={':rp':{'N':str(event['rowsProcessed'])},':rf':{'N':str(event['rowsFailed'])}})
-    cw.put_metric_data(Namespace='FileProcessor',MetricData=[{'MetricName':'RowsFailed','Value':float(event['rowsFailed'])}])
-    return event
+	ddb.update_item(TableName=TABLE,Key={'FileKey':{'S':event['key']}},UpdateExpression='SET rowsProcessed=:rp, rowsFailed=:rf',ExpressionAttributeValues={':rp':{'N':str(event['rowsProcessed'])},':rf':{'N':str(event['rowsFailed'])}})
+	cw.put_metric_data(Namespace='FileProcessor',MetricData=[{'MetricName':'RowsFailed','Value':float(event['rowsFailed'])}])
+	return event
 `
 
 	guardArn, err := createLambda(ctx, lmb, "Guard", guardCode)
