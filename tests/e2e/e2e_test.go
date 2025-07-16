@@ -1,4 +1,27 @@
+// endpointResolverV2Func is a helper to allow inline endpoint resolver for AWS SDK v2
+type endpointResolverV2Func func(service, region string) (aws.Endpoint, error)
+
+func (f endpointResolverV2Func) ResolveEndpoint(service, region string) (aws.Endpoint, error) {
+	return f(service, region)
+}
+
+
+
 package e2e
+
+// endpointResolverV2Func is a helper to allow inline endpoint resolver for AWS SDK v2
+type endpointResolverV2Func func(service, region string) (aws.Endpoint, error)
+
+func (f endpointResolverV2Func) ResolveEndpoint(service, region string) (aws.Endpoint, error) {
+	return f(service, region)
+}
+
+// endpointResolverV2Func is a helper to allow inline endpoint resolver for AWS SDK v2
+type endpointResolverV2Func func(service, region string) (aws.Endpoint, error)
+
+func (f endpointResolverV2Func) ResolveEndpoint(service, region string) (aws.Endpoint, error) {
+	return f(service, region)
+}
 
 import (
 	"archive/zip"
@@ -87,17 +110,23 @@ func TestE2E(t *testing.T) {
 
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion("us-east-1"),
-		config.WithEndpointResolver(aws.EndpointResolverFunc(
-			func(service, region string) (aws.Endpoint, error) {
-				return aws.Endpoint{URL: awsEndpoint, HostnameImmutable: true}, nil
-			})),
 	)
 	if err != nil {
 		t.Fatalf("config: %v", err)
 	}
 
-	s3c := s3.NewFromConfig(cfg)
-	ddbc := dynamodb.NewFromConfig(cfg)
+
+	customResolver := endpointResolverV2Func(
+		func(service, region string) (aws.Endpoint, error) {
+			return aws.Endpoint{URL: awsEndpoint, HostnameImmutable: true}, nil
+		})
+
+	s3c := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.EndpointResolverV2 = customResolver
+	})
+	ddbc := dynamodb.NewFromConfig(cfg, func(o *dynamodb.Options) {
+		o.EndpointResolverV2 = customResolver
+	})
 	lmb := lambda.NewFromConfig(cfg)
 	cw := cloudwatch.NewFromConfig(cfg)
 	sfnc := sfn.NewFromConfig(cfg, func(o *sfn.Options) {
