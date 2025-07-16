@@ -1,21 +1,20 @@
 name: CI
-
 on:
   push:
-    branches: [ main ]
-    tags: [ 'v*' ]
+    branches:
+      - main
+    tags:
+      - 'v*'
   pull_request:
-
 permissions:
   contents: read
-
 jobs:
   unit-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Validate workflow
-        uses: rhysd/actionlint@v1.1.0
+        uses: rhysd/actionlint@v1
       - uses: actions/setup-go@v4
         with:
           go-version: '1.22'
@@ -55,7 +54,6 @@ jobs:
       - name: Ensure bin directory exists
         run: mkdir -p ./bin
       # Removed redundant Build binaries step
-
   integration-test:
     needs: unit-test
     runs-on: ubuntu-latest
@@ -79,7 +77,6 @@ jobs:
         with:
           name: e2e-report
           path: e2e-report.xml
-
   sam-deploy-dev:
     needs: integration-test
     runs-on: ubuntu-latest
