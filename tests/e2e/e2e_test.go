@@ -94,8 +94,14 @@ func TestE2E(t *testing.T) {
 
 	s3c := s3.NewFromConfig(cfg)
 	ddbc := dynamodb.NewFromConfig(cfg)
-	lmb := lambda.NewFromConfig(cfg)
-	cw := cloudwatch.NewFromConfig(cfg)
+	lmb := lambda.NewFromConfig(cfg, func(o *lambda.Options) {
+		o.BaseEndpoint = aws.String(awsEndpoint)
+		o.EndpointOptions.DisableHTTPS = true
+	})
+	cw := cloudwatch.NewFromConfig(cfg, func(o *cloudwatch.Options) {
+		o.BaseEndpoint = aws.String(awsEndpoint)
+		o.EndpointOptions.DisableHTTPS = true
+	})
 	sfnc := sfn.NewFromConfig(cfg, func(o *sfn.Options) {
 		o.BaseEndpoint = aws.String(sfnEndpoint)
 		o.EndpointOptions.DisableHTTPS = true
