@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Validate workflow
-        uses: rhysd/actionlint@v1
+        uses: rhysd/actionlint@v1.1.0
       - uses: actions/setup-go@v4
         with:
           go-version: '1.22'
