@@ -29,7 +29,9 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
       - name: Lint
-        run: golangci-lint run
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          golangci-lint run
       - name: Compile
         run: make build
       - name: Unit tests
@@ -46,21 +48,13 @@ jobs:
           done
       - name: Validate schema
         run: |
-        pip install jsonschema
-        python - <<'PY'
-        import json, jsonschema, glob
-        schema=json.load(open('schema/profile_v2.schema.json'))
-        for f in glob.glob('sample-profiles/*.json'):
-          data=json.load(open(f))
-          jsonschema.validate(data, schema)
-        print('schema ok')
-PY
+          pip install jsonschema
+          python -c "import json, jsonschema, glob; schema=json.load(open('schema/profile_v2.schema.json')); [jsonschema.validate(json.load(open(f)), schema) for f in glob.glob('sample-profiles/*.json')]; print('schema ok')"
       - name: SAM validate
         run: sam validate --region us-east-1
       - name: Ensure bin directory exists
         run: mkdir -p ./bin
-      - name: Build binaries
-        run: make build
+      # Removed redundant Build binaries step
 
   integration-test:
     needs: unit-test
@@ -68,7 +62,6 @@ PY
     services:
       docker:
         image: docker:24-dind
-        privileged: true
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
