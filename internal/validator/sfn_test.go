@@ -11,7 +11,9 @@ func TestValidateASL_SchemaErrorNoCauses(t *testing.T) {
 	// by providing a minimal but invalid ASL definition that should fail schema validation
 	// and (depending on the schema) may not populate Causes.
 	f := filepath.Join(t.TempDir(), "invalid2.asl.json")
-	os.WriteFile(f, []byte(`{"States":{}}`), 0644)
+	if err := os.WriteFile(f, []byte(`{"States":{}}`), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
 	errs := ValidateASL(f)
 	if len(errs) == 0 {
 		t.Error("expected schema validation error, got none")
@@ -23,9 +25,15 @@ func TestDiscoverASL(t *testing.T) {
 	f1 := filepath.Join(dir, "a.asl.json")
 	f2 := filepath.Join(dir, "b.asl.yaml")
 	f3 := filepath.Join(dir, "c.txt")
-	os.WriteFile(f1, []byte("{}"), 0644)
-	os.WriteFile(f2, []byte("{}"), 0644)
-	os.WriteFile(f3, []byte("{}"), 0644)
+	if err := os.WriteFile(f1, []byte("{}"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+	if err := os.WriteFile(f2, []byte("{}"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+	if err := os.WriteFile(f3, []byte("{}"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
 	files, err := DiscoverASL([]string{dir})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -44,7 +52,9 @@ func TestValidateASL_ReadError(t *testing.T) {
 
 func TestValidateASL_DecodeError(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "bad.asl.json")
-	os.WriteFile(f, []byte("notjson"), 0644)
+	if err := os.WriteFile(f, []byte("notjson"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
 	errs := ValidateASL(f)
 	if len(errs) != 1 || errs[0] == nil || errs[0].Error()[:6] != "decode" {
 		t.Errorf("expected decode error, got %v", errs)
@@ -54,7 +64,9 @@ func TestValidateASL_DecodeError(t *testing.T) {
 func TestValidateASL_SchemaError(t *testing.T) {
 	// This should fail schema validation: missing required fields for a Step Function definition
 	f := filepath.Join(t.TempDir(), "invalid.asl.json")
-	os.WriteFile(f, []byte(`{"foo": "bar"}`), 0644)
+	if err := os.WriteFile(f, []byte(`{"foo": "bar"}`), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
 	errs := ValidateASL(f)
 	if len(errs) == 0 {
 		t.Error("expected schema validation error, got none")
