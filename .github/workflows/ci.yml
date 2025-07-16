@@ -97,10 +97,10 @@ PY
         run: sam build
       - name: Dev deploy
         if: github.ref == 'refs/heads/main'
-        run: sam deploy --config-env dev --no-confirm-changeset --no-fail-on-empty-changeset
+        run: sam deploy --config-env dev --stack-name fileProcesser-dev --no-confirm-changeset --no-fail-on-empty-changeset
       - name: Smoke invoke
         if: github.ref == 'refs/heads/main'
         run: sam local invoke GuardDuplicate --event testdata/s3_event.json
       - name: Prod deploy
         if: startsWith(github.ref, 'refs/tags/')
-        run: sam deploy --config-env prod --no-confirm-changeset --no-fail-on-empty-changeset
+        run: sam deploy --config-env prod --stack-name fileProcesser-prod --no-confirm-changeset --no-fail-on-empty-changeset
