@@ -74,7 +74,7 @@ jobs:
           go-junit-report < test.log > e2e-report.xml
       - name: Stop stack
         run: make down
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: e2e-report
           path: e2e-report.xml
