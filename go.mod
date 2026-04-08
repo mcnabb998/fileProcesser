@@ -1,6 +1,6 @@
 module github.com/your-org/file-processor-sample
 
-go 1.22
+go 1.24
 
 require (
 	github.com/aws/aws-lambda-go v1.49.0
@@ -12,13 +12,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.84.0
 	github.com/aws/aws-sdk-go-v2/service/sfn v1.35.7
 	github.com/aws/aws-sdk-go-v2/service/ssm v1.60.0
-	github.com/aws/smithy-go v1.22.4
+	github.com/aws/smithy-go v1.24.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	go.uber.org/zap v1.27.0
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.11 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.70 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.32 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.36 // indirect
